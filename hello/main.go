@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -18,28 +16,19 @@ type Response events.APIGatewayProxyResponse
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
 func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
-	var buf bytes.Buffer
-
 	name, ok := request.QueryStringParameters["name"]
 	if !ok {
 		return Response{StatusCode: 501}, fmt.Errorf("missing required name parameter")
 	}
 
-	body, err := json.Marshal(map[string]interface{}{
-		"message": fmt.Sprintf("Hello %s", name),
-	})
-	if err != nil {
-		return Response{StatusCode: 404}, err
-	}
-	json.HTMLEscape(&buf, body)
+	body := fmt.Sprintf("Hello %s!", name)
 
 	resp := Response{
 		StatusCode:      200,
 		IsBase64Encoded: false,
-		Body:            buf.String(),
+		Body:            body,
 		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "hello-handler",
+			"Content-Type": "text/plain",
 		},
 	}
 
