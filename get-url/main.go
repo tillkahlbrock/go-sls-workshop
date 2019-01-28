@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 
 	"github.com/sirupsen/logrus"
 
@@ -28,7 +29,8 @@ type Item struct {
 }
 
 type HandlerConfig struct {
-	c *dynamodb.DynamoDB
+	table string
+	c     dynamodbiface.DynamoDBAPI
 }
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
@@ -39,7 +41,7 @@ func (hc *HandlerConfig) Handler(request events.APIGatewayProxyRequest) (Respons
 	}
 
 	u, err := hc.c.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(os.Getenv("DYNAMO_DB_TABLE")),
+		TableName: aws.String(hc.table),
 		Key: map[string]*dynamodb.AttributeValue{
 			"short_url": {
 				S: aws.String(s),
@@ -48,6 +50,10 @@ func (hc *HandlerConfig) Handler(request events.APIGatewayProxyRequest) (Respons
 	})
 	if err != nil {
 		logrus.WithField("error", err).Error("failed to fetch long url")
+	}
+
+	if len(u.Item) <= 1 {
+		return Response{}, fmt.Errorf("borken")
 	}
 
 	item := Item{}
@@ -73,6 +79,6 @@ func main() {
 	sess := session.Must(session.NewSession())
 	// Create the DynamoDB client
 	dynamodbclient := dynamodb.New(sess)
-	hc := HandlerConfig{c: dynamodbclient}
+	hc := HandlerConfig{c: dynamodbclient, table: os.Getenv("DYNAMO_DB_TABLE")}
 	lambda.Start(hc.Handler)
 }
