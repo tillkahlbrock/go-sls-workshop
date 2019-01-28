@@ -27,18 +27,18 @@ type Item struct {
 	ShortUrl string `json:"short_url"`
 }
 
+type HandlerConfig struct {
+	c *dynamodb.DynamoDB
+}
+
 // Handler is our lambda handler invoked by the `lambda.Start` function call
-func Handler(request events.APIGatewayProxyRequest) (Response, error) {
+func (hc *HandlerConfig) Handler(request events.APIGatewayProxyRequest) (Response, error) {
 	s, ok := request.PathParameters["short"]
 	if !ok {
 		return Response{StatusCode: 501}, fmt.Errorf("missing required short parameter")
 	}
 
-	// Create a new AWS session and fail immediately on error
-	sess := session.Must(session.NewSession())
-	// Create the DynamoDB client
-	dynamodbclient := dynamodb.New(sess)
-	u, err := dynamodbclient.GetItem(&dynamodb.GetItemInput{
+	u, err := hc.c.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(os.Getenv("DYNAMO_DB_TABLE")),
 		Key: map[string]*dynamodb.AttributeValue{
 			"short_url": {
@@ -69,5 +69,10 @@ func Handler(request events.APIGatewayProxyRequest) (Response, error) {
 }
 
 func main() {
-	lambda.Start(Handler)
+	// Create a new AWS session and fail immediately on error
+	sess := session.Must(session.NewSession())
+	// Create the DynamoDB client
+	dynamodbclient := dynamodb.New(sess)
+	hc := HandlerConfig{c: dynamodbclient}
+	lambda.Start(hc.Handler)
 }
