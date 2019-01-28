@@ -35,25 +35,29 @@ functions:
             parameters:
               querystring:
                 url: true
-  world:
-    handler: bin/world
+  get-url:
+    handler: bin/get-url
     events:
       - http:
-          path: world
+          path: get-url/{short}
           method: get
+          request:
+            parameters:
+              path:
+                short: true
 
 resources:
   Resources:
     DynamoDBTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: url-shortener
+        TableName: url-short
         KeySchema:
-        - AttributeName: "url"
+        - AttributeName: "short_url"
           KeyType: "HASH"
         ProvisionedThroughput:
           ReadCapacityUnits: "1"
           WriteCapacityUnits: "1"
         AttributeDefinitions:
-        - AttributeName: "url"
+        - AttributeName: "short_url"
           AttributeType: "S"

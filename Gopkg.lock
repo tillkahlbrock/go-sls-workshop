@@ -50,6 +50,7 @@
     "private/protocol/rest",
     "private/protocol/xml/xmlutil",
     "service/dynamodb",
+    "service/dynamodb/dynamodbattribute",
     "service/sts",
   ]
   pruneopts = ""
@@ -107,6 +108,7 @@
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/dynamodb",
+    "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute",
     "github.com/sirupsen/logrus",
   ]
   solver-name = "gps-cdcl"

@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"hash/fnv"
+	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -21,7 +24,7 @@ func Handler(request events.APIGatewayProxyRequest) (Response, error) {
 		return Response{StatusCode: 501}, fmt.Errorf("missing required name parameter")
 	}
 
-	s := "short"
+	s, _ := shorten(u)
 
 	// Create a new AWS session and fail immediately on error
 	sess := session.Must(session.NewSession())
@@ -46,6 +49,15 @@ func Handler(request events.APIGatewayProxyRequest) (Response, error) {
 	}
 
 	return resp, nil
+}
+
+func shorten(u string) (string, error) {
+	if _, err := url.ParseRequestURI(u); err != nil {
+		return "", err
+	}
+	hash := fnv.New64a()
+	hash.Write([]byte(u))
+	return strconv.FormatUint(hash.Sum64(), 36), nil
 }
 
 func main() {
