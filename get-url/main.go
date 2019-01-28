@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+
+	"github.com/aws/aws-xray-sdk-go/xray"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
@@ -34,13 +37,13 @@ type HandlerConfig struct {
 }
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call
-func (hc *HandlerConfig) Handler(request events.APIGatewayProxyRequest) (Response, error) {
+func (hc *HandlerConfig) Handler(ctx context.Context, request events.APIGatewayProxyRequest) (Response, error) {
 	s, ok := request.PathParameters["short"]
 	if !ok {
 		return Response{StatusCode: 501}, fmt.Errorf("missing required short parameter")
 	}
 
-	u, err := hc.c.GetItem(&dynamodb.GetItemInput{
+	u, err := hc.c.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(hc.table),
 		Key: map[string]*dynamodb.AttributeValue{
 			"short_url": {
@@ -79,6 +82,9 @@ func main() {
 	sess := session.Must(session.NewSession())
 	// Create the DynamoDB client
 	dynamodbclient := dynamodb.New(sess)
+	xray.Configure(xray.Config{LogLevel: "trace"})
+	xray.AWS(dynamodbclient.Client)
+
 	hc := HandlerConfig{c: dynamodbclient, table: os.Getenv("DYNAMO_DB_TABLE")}
 	lambda.Start(hc.Handler)
 }

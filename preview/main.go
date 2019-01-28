@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+	"github.com/aws/aws-xray-sdk-go/xray"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -23,7 +25,7 @@ type HandlerConfig struct {
 	table string
 }
 
-func (hc *HandlerConfig) Handler(event events.DynamoDBEvent) (Response, error) {
+func (hc *HandlerConfig) Handler(ctx context.Context, event events.DynamoDBEvent) (Response, error) {
 
 	for _, r := range event.Records {
 		url, ok := r.Change.NewImage["url"]
@@ -36,7 +38,7 @@ func (hc *HandlerConfig) Handler(event events.DynamoDBEvent) (Response, error) {
 			logrus.WithField("error", err).Errorf("failed to scrape '%s'", url)
 		}
 
-		_, err = hc.c.PutItem(&dynamodb.PutItemInput{
+		_, err = hc.c.PutItemWithContext(ctx, &dynamodb.PutItemInput{
 			TableName: aws.String(hc.table),
 			Item: map[string]*dynamodb.AttributeValue{
 				"url":   &dynamodb.AttributeValue{S: aws.String(url.String())},
@@ -66,6 +68,8 @@ func main() {
 	sess := session.Must(session.NewSession())
 	// Create the DynamoDB client
 	dynamodbclient := dynamodb.New(sess)
+	xray.Configure(xray.Config{LogLevel: "trace"})
+	xray.AWS(dynamodbclient.Client)
 
 	hc := HandlerConfig{c: dynamodbclient, table: os.Getenv("PREVIEW_TABLE")}
 	lambda.Start(hc.Handler)
