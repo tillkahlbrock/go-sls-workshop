@@ -8,14 +8,19 @@ provider:
   environment:
     DYNAMO_DB_TABLE:
       Ref: DynamoDBTable
+    PREVIEW_TABLE:
+      Ref: PreviewTable
   iamRoleStatements:
   -  Effect: "Allow"
      Action:
      - "dynamodb:PutItem"
      - "dynamodb:GetItem"
      Resource:
-       Fn::GetAtt:
+     - Fn::GetAtt:
        - DynamoDBTable
+       - Arn
+     - Fn::GetAtt:
+       - PreviewTable
        - Arn
 
 package:
@@ -46,11 +51,24 @@ functions:
               path:
                 short: true
 
+  preview:
+    handler: bin/preview
+    events:
+    - stream:
+        type: dynamodb
+        arn:
+          Fn::GetAtt:
+          - DynamoDBTable
+          - StreamArn
+
+
 resources:
   Resources:
     DynamoDBTable:
       Type: AWS::DynamoDB::Table
       Properties:
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
         TableName: url-short
         KeySchema:
         - AttributeName: "short_url"
@@ -60,4 +78,17 @@ resources:
           WriteCapacityUnits: "1"
         AttributeDefinitions:
         - AttributeName: "short_url"
+          AttributeType: "S"
+    PreviewTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: preview
+        KeySchema:
+        - AttributeName: "url"
+          KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: "1"
+          WriteCapacityUnits: "1"
+        AttributeDefinitions:
+        - AttributeName: "url"
           AttributeType: "S"
